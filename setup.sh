@@ -1,5 +1,5 @@
 #!/bin/bash
-ENV_NAME="gut_env_test"
+ENV_NAME="pf2_micro"
 YAML_FILE="requirements.yml"
 
 # Delete conda environment if it exists

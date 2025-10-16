@@ -1,7 +1,7 @@
 @echo off
 
 :: Set variables
-set ENV_NAME=gut_env
+set ENV_NAME=pf2_micro
 set YAML_FILE=requirements.yml
 
 :: Initialize conda
