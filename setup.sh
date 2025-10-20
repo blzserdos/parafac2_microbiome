@@ -12,8 +12,11 @@ fi
 echo "Creating environment: $ENV_NAME"
 conda env create -n $ENV_NAME -f $YAML_FILE python=3.12.8
 
+conda activate $ENV_NAME
+
 echo "Installing additional packages..."
 conda run -n $ENV_NAME pip install --no-cache-dir matcouply-0.1.6.tar.gz
 
-conda activate $ENV_NAME
+conda install jupyter
+
 jupyter notebook 2_reproduce_results.ipynb

@@ -19,10 +19,13 @@ if %ERRORLEVEL%==0 (
 echo Creating environment: %ENV_NAME%
 conda env create -n %ENV_NAME% -f %YAML_FILE% python=3.12
 
+:: Activate environment (note: only persists inside this .bat run)
+CALL conda activate %ENV_NAME%
+
 :: Install additional package using conda run
 echo Installing additional packages...
 conda run -n %ENV_NAME% pip install --no-cache-dir matcouply-0.1.6.tar.gz
 
-:: Activate environment (note: only persists inside this .bat run)
-CALL conda activate %ENV_NAME%
+conda install jupyter
+
 :: jupyter notebook 2_reproduce_results.ipynb
