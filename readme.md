@@ -40,7 +40,12 @@ This script creates a Conda environment named `pf2_micro` from the `environment.
 
 If you wish to re-fit the CP and PARAFAC2 models from scratch, follow these steps. **Warning**: This is computationally intensive and may take several hours depending on the analysis.
 
-1.  Open `1_fit_model.sh` (Linux/MacOS) or `1_fit_model.bat` (Windows) and uncomment the lines corresponding to the models you want to re-fit
+1.  Open `1_fit_model.sh` (Linux/MacOS) or `1_fit_model.bat` (Windows) and uncomment the lines corresponding to the models you want to re-fit. For example, if you wish to re-run the replicability experiment for the FARMM data for CP with R=3, you should uncomment the following single line ```python functions/fit_replicability_models.py FARMM cp R3``` in `1_fit_model.sh`. Fitting a model to the full data requires uncommenting two lines, i.e.
+    ``` 
+    python functions/fit_CP.py FARMM cp R3 paper_inits
+    python functions/collect_results.py FARMM cp R3
+    ```
+    The first line fits the model, while the second collects all factors computed, discards unfeasible and degenerate solutions and chooses the best run according to lowerst reconstruction error, saving it in `analysis_results/models/{dataset}/{method}/{rank}/best_run.pkl`.
 2.  Run the model fitting script:
       * For Linux/MacOS:
         ```bash
