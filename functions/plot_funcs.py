@@ -848,7 +848,7 @@ def fnscaledcomponentplot(axs0, axs1, Model, Metadata, Taxonomy, component, var,
     axs0.axhline(0, linestyle="dashed", linewidth=0.6, c='k',zorder=0)
     axs0.bar(np.arange(1,len(taxa_to_plot.index.to_list())+1), taxa_load.iloc[taxa_to_plot.index.to_list(),component], color=tax_colors)
     axs0.xaxis.set_ticks(np.linspace(1,taxa_to_plot.shape[0],taxa_to_plot.shape[0]))
-    axs0.xaxis.set_ticklabels([x.strip().split('/')[0] for x in taxa_to_plot['Species'].to_list()],ha="right",rotation_mode="anchor")
+    axs0.xaxis.set_ticklabels([x.strip() for x in taxa_to_plot['Species'].to_list()],ha="right",rotation_mode="anchor")
     axs0.yaxis.set_major_locator(ticker.MaxNLocator(4))
 
     axs1.axhline(0, linestyle="dashed", linewidth=0.6, c='k',zorder=0)
@@ -1027,11 +1027,11 @@ def taxaplot(ax, Model, Taxonomy, component, labels=True, subtitle=True, legend=
     ax.bar(np.arange(1,len(taxa_to_plot.index.to_list())+1), taxa_load.iloc[taxa_to_plot.index.to_list(),component], color=tax_colors)
     ax.xaxis.set_ticks(np.linspace(1,taxa_to_plot.shape[0],taxa_to_plot.shape[0]))
     if tax_abbrev == True:
-        taxa_to_plot["Species"] = [x.strip().split('/')[0] for x in taxa_to_plot['Species']]
-        taxa_to_plot["Species"] = [f"{parts[0][0]}. {parts[1]}" if len(parts := name.strip().split()) == 2 else name.strip() for name in taxa_to_plot["Species"]]
+        taxa_to_plot["Species"] = [f"{x.strip().split(' ')[0]} sp." if len(x.strip())>45 else x.strip() for x in taxa_to_plot['Species']]
+        # taxa_to_plot["Species"] = [f"{parts[0]}. sp" if len(parts := name.strip().split()) == 2 else name.strip() for name in taxa_to_plot["Species"]]
         ax.xaxis.set_ticklabels([x for x in taxa_to_plot['Species']],ha="right",rotation_mode="anchor")
     else:
-        ax.xaxis.set_ticklabels([x.strip().split('/')[0] for x in taxa_to_plot['Species'].to_list()],ha="right",rotation_mode="anchor")
+        ax.xaxis.set_ticklabels([x.strip() for x in taxa_to_plot['Species'].to_list()],ha="right",rotation_mode="anchor")
 
     ax.yaxis.set_major_locator(ticker.MaxNLocator(4))
     ax.tick_params(direction="out", length=2)
