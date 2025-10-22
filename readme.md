@@ -45,6 +45,7 @@ If you wish to re-fit the CP and PARAFAC2 models from scratch, follow these step
     python functions/collect_results.py FARMM cp R3
     ```
 The first line fits the model, while the second collects all factors computed, discards unfeasible and degenerate solutions and chooses the best run according to lowerst reconstruction error, saving it in `analysis_results/models/FARMM/cp/R3/best_run.pkl`. The optional `paper_inits` argument fixes the model initializations to the ones used in the manuscript to ensure reproducibility.
+
 2.  Run the model fitting script:
       * For Linux/MacOS:
         ```bash
@@ -55,6 +56,7 @@ The first line fits the model, while the second collects all factors computed, d
         ./1_fit_model.bat
         ```
     This will overwrite the pre-saved factors in the `analysis_results/models/FARMM/cp/R3/best_run.pkl` directory.
+    
 3.  In the `2_reproduce_results.ipynb` notebook, uncomment the cells under *Model selection* and re-run the notebook to generate figures using the re-fitted models.
 
 ## Directory Structure
