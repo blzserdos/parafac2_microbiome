@@ -1,10 +1,9 @@
 ## Code and data accompanying the manuscript: Extracting host-specific developmental signatures from longitudinal microbiome data
 ---------------
-This repository contains the data and code to reproduce the findings and figures presented in our manuscript. This work introduces a new method to analyze longitudinal microbiome data to identify microbial patterns linked to host development.
+This repository contains data and code to reproduce the findings and figures presented in the manuscript.
 
-### Data
-
-The processed data used in the analysis is located in the `/data` directory. The raw sequencing data is available at the NCBI Sequence Read Archive under accession number [Your Accession Number].
+### Data Availability
+Shotgun metagenomic sequence data from the FARMM dataset [Tanes et al., 2021](https://doi.org/10.1016/j.chom.2020.12.012) were deposited under BioProject with accession code PRJNA675301. Processed data were obtained from [Ma and Li, 2023](https://doi.org/10.1214/22-AOAS1661) and is located in the `/data` directory. Individual-level clinical data from the $\sf{COPSAC{2010}}$ cohort are not publicly available to protect participant privacy, in accordance with the Danish Data Protection Act and European Regulation 2016/679 of the European Parliament and of the Council (GDPR) that prohibit distribution even in pseudo-anonymized form. Data can be made available under a joint research collaboration by contacting COPSAC’s data protection officer (administration@dbac.dk). 
 
 ### Requirements
 
@@ -14,7 +13,7 @@ The processed data used in the analysis is located in the `/data` directory. The
 
 ### Reproducing the Analysis
 
-This analysis can be fully reproduced in two main steps.
+The analysis can be reproduced in two main steps.
 
 **Step 1: Setup the Environment** 🖥️
 
@@ -34,18 +33,18 @@ This script creates a Conda environment named `pf2_micro` from the `environment.
 **Step 2: Run the Analysis Notebook** 🔬
 
 1.  Once Jupyter opens, navigate to and run the `2_reproduce_results.ipynb` notebook.
-2.  Running all cells in this notebook will reproduce the results and save all manuscript figures (Figures 1-5 and Supplementary Figures S1-S11) to the `/figures` directory. The notebook uses pre-computed model factors for speed.
+2.  Running all cells in this notebook will reproduce the results and save manuscript figures (Figures 1-5 and Supplementary Figures S1-S11) to the `/figures` directory. The notebook uses pre-computed model factors for speed.
 
 **(Optional) Re-fitting the Tensor Models**
 
 If you wish to re-fit the CP and PARAFAC2 models from scratch, follow these steps. **Warning**: This is computationally intensive and may take several hours depending on the analysis.
 
-1.  Open `1_fit_model.sh` (Linux/MacOS) or `1_fit_model.bat` (Windows) and uncomment the lines corresponding to the models you want to re-fit. For example, if you wish to re-run the replicability experiment for the FARMM data for CP with R=3, you should uncomment the following single line ```python functions/fit_replicability_models.py FARMM cp R3``` in `1_fit_model.sh`. Fitting a model to the full data requires uncommenting two lines, i.e.
+1.  Open `1_fit_model.sh` (Linux/MacOS) or `1_fit_model.bat` (Windows) and uncomment the lines corresponding to the models you want to re-fit. For example, if you wish to re-run a 3-component CP model on the FARMM data you should uncomment the following single lines:
     ``` 
     python functions/fit_CP.py FARMM cp R3 paper_inits
     python functions/collect_results.py FARMM cp R3
     ```
-    The first line fits the model, while the second collects all factors computed, discards unfeasible and degenerate solutions and chooses the best run according to lowerst reconstruction error, saving it in `analysis_results/models/{dataset}/{method}/{rank}/best_run.pkl`.
+The first line fits the model, while the second collects all factors computed, discards unfeasible and degenerate solutions and chooses the best run according to lowerst reconstruction error, saving it in `analysis_results/models/FARMM/cp/R3/best_run.pkl`. The optional `paper_inits` argument fixes the model initializations to the ones used in the manuscript to ensure reproducibility.
 2.  Run the model fitting script:
       * For Linux/MacOS:
         ```bash
@@ -55,7 +54,7 @@ If you wish to re-fit the CP and PARAFAC2 models from scratch, follow these step
         ```bash
         ./1_fit_model.bat
         ```
-    This will overwrite the pre-saved factors in the `/analysis_results` directory.
+    This will overwrite the pre-saved factors in the `analysis_results/models/FARMM/cp/R3/best_run.pkl` directory.
 3.  In the `2_reproduce_results.ipynb` notebook, uncomment the cells under *Model selection* and re-run the notebook to generate figures using the re-fitted models.
 
 ## Directory Structure
@@ -67,6 +66,7 @@ If you wish to re-fit the CP and PARAFAC2 models from scratch, follow these step
 │   └── figures/        # Output directory for generated figures
 │   └── models/         # Output directory for estimated model factors and diagnostics
 │   └── replicability/  # Output directory for replicability analysis results
+├── functions/          # Python functions for model fitting, analysis, plotting
 ├── environment.yml     # Conda environment specification
 ├── 1_fit_model.sh      # (Optional) Script to re-fit models
 └── 2_reproduce_results.ipynb # Main notebook for analysis and plotting
