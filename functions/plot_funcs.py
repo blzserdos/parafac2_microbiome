@@ -1481,7 +1481,7 @@ def get_fig5(SD_copsac, SD_farmm, df_copsac, df_farmm, selected_ids_copsac, sele
         ax.tick_params(direction="out", length=2)
         ax.set_xmargin(0.1)
         ax.set_ymargin(0.1)
-    plt.savefig("analysis_results/figures/Fig5new.png",dpi=600, bbox_inches='tight',pad_inches=0.03)
+    plt.savefig("analysis_results/figures/Fig5.png",dpi=600, bbox_inches='tight',pad_inches=0.03)
     plt.show()
         
     return
