@@ -1,0 +1,5 @@
+analysis_results/replicability/COPSAC2010/cp/*
+!analysis_results/replicability/COPSAC2010/cp/FMS_by_R.pkl
+
+analysis_results/replicability/COPSAC2010/parafac2/*
+!analysis_results/replicability/COPSAC2010/parafac2/FMS_by_R.pkl
