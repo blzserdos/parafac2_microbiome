@@ -1,3 +1,9 @@
+data/COPSAC2010_taxonomy.tsv
+data/COPSAC2010_metadata.csv
+data/COPSAC2010_data.pkl
+data/COPSAC2010_data.mat
+data/tax_colormap_copsac.p
+
 analysis_results/replicability/COPSAC2010/cp/*
 !analysis_results/replicability/COPSAC2010/cp/FMS_by_R.pkl
 
