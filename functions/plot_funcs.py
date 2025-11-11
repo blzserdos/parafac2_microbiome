@@ -2,7 +2,6 @@ import os
 import numpy as np
 import pandas as pd
 import matcouply
-# from functools import reduce
 import pickle
 import numpy.linalg as la
 import scipy.io as sio
@@ -19,11 +18,12 @@ from matplotlib.colors import LinearSegmentedColormap, ListedColormap
 import matplotlib.patheffects as pe
 import matplotlib.gridspec as gridspec
 from cycler import cycler
-from itertools import cycle
+import itertools
 from matcouply.coupled_matrices import cmf_to_tensor
 import tensorly as tl
 from tensorly import cp_normalize
 from natsort import natsorted, natsort_keygen
+from functions.aux_funcs import check_degenerate, scale_factors
 plt.rc('text.latex', preamble=r'\usepackage{amssymb}')
 plt.rcParams['mathtext.fontset'] = 'custom'
 plt.rcParams['mathtext.bf'] = 'STIXGeneral:bold'
@@ -44,24 +44,38 @@ def fit_rep_plot(dataset, method, axs):
     with open(f"analysis_results/replicability/{dataset}/{method}/FMS_by_R.pkl", 'rb') as f:
         FMS_by_R = pickle.load(f)
         
-    df = pd.DataFrame.from_dict(FMS_by_R, orient='index')
-    df = df.transpose()
-    dflong = pd.melt(df,var_name="rank")
-    dflong = dflong.sort_values(by="rank",key=natsort_keygen())
-    dflong["rank"] = dflong["rank"].str.strip("R")
+    if method == "cp":
+        df = pd.DataFrame.from_dict(FMS_by_R, orient='index')
+        df = df.transpose()
+        dflong = pd.melt(df,var_name="rank")
+        dflong = dflong.sort_values(by="rank",key=natsort_keygen())
+        dflong["rank"] = dflong["rank"].str.strip("R")
+        sns.boxplot(x=dflong["rank"],y=dflong["value"], width=.6,fliersize=0,whis=[10, 90], color='#8da0cb', ax=axs[1])
+        sns.stripplot(x=dflong["rank"],y=dflong["value"],size=2,color='k', alpha=0.3, ax=axs[1])
+    else:
+        dflong = pd.DataFrame.from_dict(FMS_by_R).melt(var_name="rank")
+        dflong[["FMS_A", "FMS_CB"]] = pd.DataFrame(dflong['value'].to_list(), columns=['FMS_A','FMS_CB'])
+        dflong["rank"] = dflong["rank"].str.strip("R")
+        dflong.drop(columns=['value'], inplace=True)
+        dflong = dflong.melt(id_vars="rank", var_name="FMS")
+        colors = ['#66c2a5', '#e78ac3']
+        sns.stripplot(x=dflong["rank"],y=dflong["value"],hue=dflong["FMS"],size=2, palette=colors,dodge=True, alpha=0.3, legend=False, ax=axs[1])
+        sns.boxplot(x=dflong["rank"],y=dflong["value"],hue=dflong["FMS"],palette=colors, width=.6,fliersize=0,whis=[10, 90], ax=axs[1],zorder=3)
+        handles, _ = axs[1].get_legend_handles_labels()          # Get the artists.
+        axs[1].legend(handles, [r"FMS$_{\text{A}}$", r"FMS$_{\text{C*B}}$"], loc="best")
 
-    sns.boxplot(x=dflong["rank"],y=dflong["value"], width=.6,fliersize=0,whis=[10, 90], color='#8da0cb', ax=axs[1])
-    sns.stripplot(x=dflong["rank"],y=dflong["value"],size=2,color='k', alpha=0.3, ax=axs[1])
+    # sns.boxplot(x=dflong["rank"],y=dflong["value"], width=.6,fliersize=0,whis=[10, 90], color='#8da0cb', ax=axs[1])
+    # sns.stripplot(x=dflong["rank"],y=dflong["value"],size=2,color='k', alpha=0.3, ax=axs[1])
     axs[1].axhline(0.9, color='#b3b3b3', linestyle='dashed', alpha = 0.4)
     if method == "cp":
-        axs[1].set_ylabel(r"$FMS_{AB}$")
+        axs[1].set_ylabel(r"FMS$_{\text{AB}}$")
     else:
-        axs[1].set_ylabel(r"$FMS_A$")
+        axs[1].set_ylabel(r"FMS")
 
     axs[1].set_ylim(0.5, 1.05)
     axs[0].plot(range(len(Fit_by_R)), Fit_by_R, marker='o', color='#fc8d62', linewidth=1.0)
     axs[0].set_ylim(0, 60)
-    axs[0].set_ylabel(r"$Fit\, [\%]$")
+    axs[0].set_ylabel(r"Fit$\, [\%]$")
     axs[1].set_xlabel(r"R")
     axs[0].set_title(method.upper())
     return
@@ -193,7 +207,7 @@ def get_fig2(facs1,facs2,facs3,subject_colors,linestyles, subject_ids):
     plt.show()
     return fig
 
-def get_fig5(M1, M2, M3, CB1, CB2, CB3, mae1, mae2, max_ixs):
+def get_filt_sens_fig(M1, M2, M3, CB1, CB2, CB3, mae1, mae2, max_ixs):
 
     C1, A1, B1 = M1
     C2, A2, B2 = M2
@@ -348,7 +362,10 @@ def factorplot(Model, var=None, Metadata=None, time_labels=None, splines_on=True
         color_labels = Metadata[var].value_counts().index.tolist()
 
         # map label to RGB
-        rgb_values = mpl.colormaps['Dark2'].resampled(8).colors
+        # rgb_values = mpl.colormaps['Dark2'].resampled(8).colors
+        # rgb_values = ['#e6ab02', '#e7298a', '#7570b3'] 
+        rgb_values = ['#e6ab02', '#e7298a', '#7570b3'] 
+        
         color_map = dict(zip(color_labels, rgb_values))
         # legend
         handles = [Line2D([0], [0], marker='o', color='w', markerfacecolor=v, label=k, markersize=5) for k, v in color_map.items()]
@@ -511,8 +528,8 @@ def scaledfactorplot(Model, Metadata, var, time_labels, splines_on=True, individ
 
 
     # list of RGB triplets
-    rgb_values = mpl.colormaps['Dark2'].resampled(8).colors
-
+    # rgb_values = mpl.colormaps['Dark2'].resampled(8).colors
+    rgb_values = ['#e6ab02', '#e7298a', '#7570b3'] 
     # map label to RGB
     color_map = dict(zip(color_labels, rgb_values))
     linestyles = ['solid','dashed','dashdotted']
@@ -808,7 +825,8 @@ def fnscaledcomponentplot(axs0, axs1, Model, Metadata, Taxonomy, component, var,
         lab1 = np.asarray(ixs)[:,0]
         lab2 = np.asarray(ixs)[:,1]
     # list of RGB triplets
-    rgb_values = mpl.colormaps['Dark2'].resampled(8).colors
+    # rgb_values = mpl.colormaps['Dark2'].resampled(8).colors
+    rgb_values = ['#e6ab02', '#e7298a', '#7570b3']
     if len(var) == 2:
         rgb_values = [rgb_values[i] for i in 1*(np.asarray(ixs)[:,0] != ixs[0][0])]
     # map label to RGB
@@ -1031,7 +1049,8 @@ def taxaplot(ax, Model, Taxonomy, component, labels=True, subtitle=True, legend=
         # taxa_to_plot["Species"] = [f"{parts[0]}. sp" if len(parts := name.strip().split()) == 2 else name.strip() for name in taxa_to_plot["Species"]]
         ax.xaxis.set_ticklabels([x for x in taxa_to_plot['Species']],ha="right",rotation_mode="anchor")
     else:
-        ax.xaxis.set_ticklabels([x.strip() for x in taxa_to_plot['Species'].to_list()],ha="right",rotation_mode="anchor")
+        # ax.xaxis.set_ticklabels([x.strip().split('/')[0] + "sp." for x in taxa_to_plot['Species'].to_list()],ha="right",rotation_mode="anchor")
+        ax.xaxis.set_ticklabels([x for x in taxa_to_plot['Species']],ha="right",rotation_mode="anchor")
 
     ax.yaxis.set_major_locator(ticker.MaxNLocator(4))
     ax.tick_params(direction="out", length=2)
@@ -1140,6 +1159,8 @@ def fnscaledtimeplot(ax, Model, Metadata, component, var, time_labels, individua
     # unique category labels
     color_labels = ["VD - no IAP", "VD - IAP", "CS"]
     rgb_values = ['#d9d9d9','#66C2A5','#FC8D62']
+    # rgb_values = ['#e7298a','#e6ab02','#666666']
+    
     color_map = dict(zip(color_labels, rgb_values))
     linestyles = ['solid','dashdot',(0,(3,3))]
     ax.axhline(0, linestyle="dashed", linewidth=0.6, c='k',zorder=0)
@@ -1288,15 +1309,15 @@ def subjectsplotfarmm(ax, Model, Metadata, component):
     component = component-1
     Metadata[str(component+1)] = Model[0][:,component]
     Metadata["testing"] = Metadata["Study group"].astype(str)
-
+    rgb_values = ['#e6ab02', '#e7298a', '#7570b3'] 
     x = "testing"
     order=["Vegan", "Omnivore", "EEN"]
     counts = Metadata["testing"].value_counts().loc[order].to_list()
     
     s = sns.boxplot(data=Metadata, x=x, order=order, hue = x, hue_order=order,
-                        y=str(component+1),fliersize=0, width=0.4, palette="Dark2",ax=ax)
+                        y=str(component+1),fliersize=0, width=0.4, palette=rgb_values,ax=ax)
 
-    sns.stripplot(Metadata, x=x, y=str(component+1),hue = x,hue_order=order, size=2, palette="Dark2",ax=ax)
+    sns.stripplot(Metadata, x=x, y=str(component+1),hue = x,hue_order=order, size=2, palette=rgb_values,ax=ax)
     ax.spines[['right', 'top']].set_visible(False)
     ax.set_ylabel(r"$\boldsymbol{c}_component$".replace('component', str(component+1)), fontsize=11)
     pairs=[
@@ -1366,3 +1387,176 @@ def get_figS11(CB1,CB2,CB3):
             xytext=(-3.5, 0.2), textcoords='offset fontsize', fontsize='medium', va='bottom', fontfamily='serif')
     plt.subplots_adjust(wspace=0.5, hspace=0.4)
     return fig
+
+def get_fig5(SD_copsac, SD_farmm, df_copsac, df_farmm, selected_ids_copsac, selected_ids_farmm, rgb_values_copsac, rgb_values_farmm):
+    
+    fig = plt.figure(figsize=mm2inch((178,130)))
+
+    gs = gridspec.GridSpec(2,1, figure=fig, height_ratios=(0.5,0.5), hspace=0.8)
+    gs0 = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs[0], width_ratios=(0.4,0.6), wspace=0.45, hspace=0.18)
+    gs1 = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs[1], width_ratios=(0.4,0.6), wspace=0.45, hspace=0.18)
+
+    axs0 = gs0.subplots()
+    axs1 = gs1.subplots()
+
+    ## COPSAC
+    axs0[0].hist(SD_copsac[(SD_copsac['component'] == 2) & (SD_copsac['Study group'] == "VD - no IAP")]['mean'].values, alpha=0.7, color=rgb_values_copsac[0], label="VD - no IAP\n(N=188)", bins=20, zorder=3)
+    axs0[0].hist(SD_copsac[(SD_copsac['component'] == 2) & (SD_copsac['Study group'] == "VD - IAP")]['mean'].values, alpha=0.7, color=rgb_values_copsac[1], label="VD - IAP\n(N=29)", bins=20, zorder=3)
+    axs0[0].hist(SD_copsac[(SD_copsac['component'] == 2) & (SD_copsac['Study group'] == "CS")]['mean'].values, alpha=0.7, color=rgb_values_copsac[2], label="CS\n(N=50)", bins=20, zorder=3)
+    axs0[0].axvline(x=0.0027,ymax=1, linestyle="dotted", color="#c0c0c0")
+    axs0[0].axvline(x=0.0016,ymax=1, linestyle="dashed", color="#c0c0c0")
+    axs0[0].axvline(x=0.0020,ymax=1, linestyle="solid", color="#c0c0c0")
+    axs0[0].text(x=0.0027,y=51,s="A",rotation=45, rotation_mode='anchor', color="#c0c0c0")
+    axs0[0].text(x=0.0016,y=51,s="B",rotation=45, rotation_mode='anchor', color="#c0c0c0")
+    axs0[0].text(x=0.0020,y=51,s="C",rotation=45, rotation_mode='anchor', color="#c0c0c0")
+    axs0[0].set_xlabel(r"Avg. standard deviation")
+    axs0[0].set_ylabel("Frequency")
+    axs0[0].legend(title="", handlelength=0.8,handleheight=0.8, handletextpad=0.2, columnspacing=1.0, labelspacing=0.5, fontsize=9, frameon=False,title_fontproperties={'size':10},loc='upper right', bbox_to_anchor=(1.1,1.3))
+    for ix, t in enumerate(axs0[0].legend_.get_texts()):
+        t.set_verticalalignment("center")
+        axs0[0].legend_.legend_handles[ix].set_y(-1.5)
+
+    g = sns.lineplot(x="Time", y="value", errorbar=("sd",2),
+                style="selected_subject", 
+                style_order=selected_ids_copsac,
+                color = "#c0c0c0",
+                data=df_copsac, ax=axs0[1])        
+
+    time_labels = ["1wk", "1mth", "1yr", "4yr", "6yr"]
+    axs0[1].legend(title = r'subject id ($k$)', handlelength=1.4, handletextpad=0.2,labelspacing=0.2, fontsize=9,frameon=False,loc='upper right', bbox_to_anchor=(1.0,1.25))
+    new_labels = ['A', 'B', 'C']
+    for t, l in zip(axs0[1].legend_.texts, new_labels):
+        t.set_text(l)
+    axs0[1].set_ylabel(r'$c_{k,3}[\boldsymbol{b}_k]_{3}$', fontsize=11)
+    axs0[1].set_ylim(-0.02,0.084)
+    axs0[1].xaxis.set_major_locator(ticker.FixedLocator(list(range(1,len(time_labels)+1))))
+    axs0[1].xaxis.set_ticklabels(time_labels, ha="right",rotation_mode="anchor")
+    axs0[1].ticklabel_format(axis='y', style='sci', scilimits=(-1,1), useMathText=True)
+    axs0[1].tick_params(axis = 'x', labelrotation=45)
+    axs0[1].set_xlabel("")
+
+    ## FARMM
+    axs1[0].hist(SD_farmm[(SD_farmm['component'] == 0) & (SD_farmm['Study group'] == "Vegan")]['mean'].values, alpha=0.7, color=rgb_values_farmm[0], label="Vegan\n(N=10)", bins=5, zorder=3)
+    axs1[0].hist(SD_farmm[(SD_farmm['component'] == 0) & (SD_farmm['Study group'] == "Omnivore")]['mean'].values, alpha=0.7, color=rgb_values_farmm[1], label="Omnivore\n(N=10)", bins=10, zorder=2)
+    axs1[0].hist(SD_farmm[(SD_farmm['component'] == 0) & (SD_farmm['Study group'] == "EEN")]['mean'].values, alpha=0.7, color=rgb_values_farmm[2], label="EEN\n(N=10)", bins=10, zorder=1)
+
+    axs1[0].axvline(x=0.0060,ymax=0.25, linestyle="dotted", color=rgb_values_farmm[2])
+    axs1[0].axvline(x=0.0027,ymax=0.9, linestyle="dashed", color=rgb_values_farmm[2])
+    axs1[0].axvline(x=0.0029,ymax=0.9, linestyle="solid", color=rgb_values_farmm[2])
+    axs1[0].text(x=0.0061,y=1.5,s="9032",rotation=45, rotation_mode='anchor', color=rgb_values_farmm[2])
+    axs1[0].text(x=0.0025,y=5.4,s="9024",rotation=45, rotation_mode='anchor', color=rgb_values_farmm[2])
+    axs1[0].text(x=0.0031,y=5.4,s="9003",rotation=45, rotation_mode='anchor', color=rgb_values_farmm[2])
+
+    axs1[0].set_xlabel(r"Avg. standard deviation")
+    axs1[0].set_ylabel("Frequency")
+    axs1[0].set_ylim((0.0,6))
+    axs1[0].legend(title="", handlelength=0.8, handleheight=0.8, handletextpad=0.2, columnspacing=1.0, labelspacing=0.5, fontsize=9, frameon=False, title_fontproperties={'size':10},loc='upper right', bbox_to_anchor=(1.05,1.3))
+    for ix, t in enumerate(axs1[0].legend_.get_texts()):
+        t.set_verticalalignment("center")
+        axs1[0].legend_.legend_handles[ix].set_y(-1.5)
+
+    g = sns.lineplot(x="Time", y="value", errorbar=("sd",2),
+                style="selected_subject", 
+                style_order=selected_ids_farmm,
+                color=rgb_values_farmm[2],
+                data=df_farmm, ax=axs1[1])
+
+    axs1[1].legend(title = r'subject id ($k$)', handlelength=1.4, handletextpad=0.2,labelspacing=0.2, fontsize=9,frameon=False,loc='upper right', bbox_to_anchor=(1.0,1.25))
+    new_labels = ['9003', '9024', '9032']
+    for t, l in zip(axs1[1].legend_.texts, new_labels):
+        t.set_text(l)
+    axs1[1].set_ylabel(r'$c_{k,1}[\boldsymbol{b}_k]_{1}$', fontsize=11)
+    axs1[1].set_xlabel("Study day")
+    axs1[1].set_ylim(-0.02,0.084)
+    axs1[1].ticklabel_format(axis='y', style='sci', scilimits=(-1,1), useMathText=True)
+    axs1[1].xaxis.set_major_locator(ticker.MaxNLocator(5))
+
+    labels = ['i)', 'ii)', 'iii)', 'iv)']
+    for ix, ax in enumerate([axs0[0], axs0[1], axs1[0], axs1[1]]):
+        ax.annotate(
+            labels[ix],
+            xy=(0, 1), xycoords='axes fraction',
+            xytext=(-3.8, 0.3), textcoords='offset fontsize', fontsize='medium', va='bottom', fontfamily='serif')
+        ax.spines[['right', 'top']].set_visible(False)
+        ax.tick_params(direction="out", length=2)
+        ax.set_xmargin(0.1)
+        ax.set_ymargin(0.1)
+    plt.savefig("analysis_results/figures/Fig5new.png",dpi=600, bbox_inches='tight',pad_inches=0.03)
+    plt.show()
+        
+    return
+
+def get_sup_rep_plots(fn, SD, df, selected_ids, rgb_values):
+
+    R = len(df["component"].dropna().unique())
+    fig = plt.figure(figsize=mm2inch((178,36*R)))
+    gs = gridspec.GridSpec(R,2, figure=fig, width_ratios=(0.4,0.6), hspace=0.5, wspace=0.4)
+    axs = gs.subplots(sharex='col')
+
+    if R == 5:
+        profile_col = "#c0c0c0"
+    else:   
+        profile_col = rgb_values[2]
+
+    ## COPSAC
+    for i in range(R):
+        if R == 5:
+            axs[i,0].hist(SD[(SD['component'] == i) & (SD['Study group'] == "VD - no IAP")]['mean'].values, alpha=0.7, color=rgb_values[0], label="VD - no IAP (N=188)", bins=20, zorder=3)
+            axs[i,0].hist(SD[(SD['component'] == i) & (SD['Study group'] == "VD - IAP")]['mean'].values, alpha=0.7, color=rgb_values[1], label="VD - IAP (N=29)", bins=20, zorder=3)
+            axs[i,0].hist(SD[(SD['component'] == i) & (SD['Study group'] == "CS")]['mean'].values, alpha=0.7, color=rgb_values[2], label="CS (N=50)", bins=20, zorder=3)
+        else:
+            axs[i,0].hist(SD[(SD['component'] == i) & (SD['Study group'] == "Vegan")]['mean'].values, alpha=0.7, color=rgb_values[0], label="Vegan (N=10)", bins=5, zorder=3)
+            axs[i,0].hist(SD[(SD['component'] == i) & (SD['Study group'] == "Omnivore")]['mean'].values, alpha=0.7, color=rgb_values[1], label="Omnivore (N=10)", bins=10, zorder=2)
+            axs[i,0].hist(SD[(SD['component'] == i) & (SD['Study group'] == "EEN")]['mean'].values, alpha=0.7, color=rgb_values[2], label="EEN (N=10)", bins=10, zorder=1)
+
+        axs[i,0].set_ylabel("Frequency")
+
+        g = sns.lineplot(x="Time", y="value", errorbar=("sd",2),
+                    style="selected_subject", 
+                    style_order=selected_ids,
+                    color= profile_col,
+                    data=df[df['component']==i], ax=axs[i,1])
+        axs[i,1].set_xlabel("")
+        axs[i,1].set_ylabel(r"$c_{{{k,component}}}\boldsymbol{b}_{{{component}}}$".replace('component', str(i+1)), fontsize=11)
+        axs[i,1].ticklabel_format(axis='y', style='sci', scilimits=(-1,1), useMathText=True)
+        g.legend_.remove()
+
+    axs[0,0].legend(title="", handlelength=0.8, handleheight=0.8, handletextpad=0.2, columnspacing=1.0, labelspacing=0.5, fontsize=9, frameon=False, title_fontproperties={'size':10},loc='upper right', bbox_to_anchor=(1.2,1.6))
+    for ix, t in enumerate(axs[0,0].legend_.get_texts()):
+        t.set_verticalalignment("center")
+        axs[0,0].legend_.legend_handles[ix].set_y(-1.5)
+
+ 
+    if len(df["Time"].dropna().unique()) == 5:
+        axs[4,1].set_xlabel("Time")
+        time_labels = ["1wk", "1mth", "1yr", "4yr", "6yr"]
+        axs[4,1].xaxis.set_major_locator(ticker.FixedLocator(list(range(1,len(time_labels)+1))))
+        axs[4,1].xaxis.set_ticklabels(time_labels, ha="right",rotation_mode="anchor")
+        axs[4,1].tick_params(axis = 'x', labelrotation=45)
+        axs[4,0].set_xlabel(r"Avg. standard deviation")
+        axs[0,1].legend(title = r'subject id ($k$)',handlelength=1.4, handletextpad=0.1,labelspacing=0.2, fontsize=9,frameon=False,loc='lower left', bbox_to_anchor=(0.2,0.45))
+        new_labels = ['A', 'B', 'C']
+        for t, l in zip(axs[0,1].legend_.texts, new_labels):
+            t.set_text(l)
+    else:
+        axs[2,1].set_xlabel("Study day")
+        axs[2,1].xaxis.set_major_locator(ticker.MaxNLocator(5))
+        axs[2,0].set_xlabel(r"Avg. standard deviation")
+        axs[0,1].legend(title = r'subject id ($k$)',handlelength=1.4, handletextpad=0.1,labelspacing=0.2, fontsize=9,frameon=False,loc='lower left', bbox_to_anchor=(0.4,0.6))
+
+    labels = ['i)', 'ii)']
+    for ix, ax in enumerate([axs[0,0],axs[0,1]]):
+        ax.annotate(
+            labels[ix],
+            xy=(0, 1), xycoords='axes fraction',
+            xytext=(-3.8, 0.3), textcoords='offset fontsize', fontsize='medium', va='bottom', fontfamily='serif')
+    for ix, ax in enumerate(axs.flatten()):
+        ax.spines[['right', 'top']].set_visible(False)
+        ax.tick_params(direction="out", length=2)
+        ax.set_xmargin(0.1)
+        ax.set_ymargin(0.1)
+    plt.savefig("analysis_results/figures/"+fn+".png",dpi=600, bbox_inches='tight',pad_inches=0.03)
+
+    plt.show()
+
+    return

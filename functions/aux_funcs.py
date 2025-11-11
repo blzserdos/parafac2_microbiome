@@ -8,6 +8,7 @@ import time
 import numpy as np
 import pandas as pd
 import tensorly as tl
+import numpy.linalg as la
 import re
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -690,11 +691,78 @@ def collect_fit(fp, dataset, method):
         pickle.dump(fit_by_R, f)
     return fit_by_R
 
-def collect_replicability_results(dataset, method):
+def get_par2taxa_fms(Metadata,dfsplit0,dfsplit1):
+    id0 = dfsplit0.dropped_ids
+    id1 = dfsplit1.dropped_ids
+    ix0 = ~np.isin(Metadata.index, id0)
+    ix1 = ~np.isin(Metadata.index, id1)
+    keptID0 = Metadata.index[ix0].tolist()
+    keptID1 = Metadata.index[ix1].tolist()
+    intersect0 = ~np.isin(np.asarray(keptID0), id0 + id1)
+    intersect1 = ~np.isin(np.asarray(keptID1), id0 + id1)
+    
+    fac0 = dfsplit0.factors
+    fac1 = dfsplit1.factors
+    
+    C0 = fac0[0][intersect0,:]
+    B0 = np.asarray(fac0[1])[intersect0,:,:]
+    A0 = fac0[2]
+
+    C1 = fac1[0][intersect1,:]
+    B1 = np.asarray(fac1[1])[intersect1,:,:]
+    A1 = fac1[2]
+
+    sample_load0 = np.empty((C0.shape[0],B0[0].shape[0],A0.shape[1]),dtype='float64')
+    sample_load1 = sample_load0.copy()
+    for r in range(C0.shape[1]):
+        for k in range(C0.shape[0]):
+            sample_load0[k,:,r] = C0[k,r] * B0[k,:,r]
+            sample_load1[k,:,r] = C1[k,r] * B1[k,:,r]
+    
+    return congruence_coefficient(np.vstack(sample_load0),np.vstack(sample_load1))[0]
+
+def get_par2scaledtime_fms(Metadata,dfsplit0,dfsplit1):
+    id0 = dfsplit0.dropped_ids
+    id1 = dfsplit1.dropped_ids
+    ix0 = ~np.isin(Metadata.index, id0)
+    ix1 = ~np.isin(Metadata.index, id1)
+    keptID0 = Metadata.index[ix0].tolist()
+    keptID1 = Metadata.index[ix1].tolist()
+    intersect0 = ~np.isin(np.asarray(keptID0), id0 + id1)
+    intersect1 = ~np.isin(np.asarray(keptID1), id0 + id1)
+    
+    fac0 = dfsplit0.factors
+    fac1 = dfsplit1.factors
+    
+    C0 = fac0[0][intersect0,:]
+    B0 = np.asarray(fac0[1])[intersect0,:,:]
+    A0 = fac0[2]
+
+    C1 = fac1[0][intersect1,:]
+    B1 = np.asarray(fac1[1])[intersect1,:,:]
+    A1 = fac1[2]
+
+    sample_load0 = np.empty((C0.shape[0],B0[0].shape[0],A0.shape[1]),dtype='float64')
+    sample_load1 = sample_load0.copy()
+    for r in range(C0.shape[1]):
+        for k in range(C0.shape[0]):
+            sample_load0[k,:,r] = C0[k,r] * B0[k,:,r]
+            sample_load1[k,:,r] = C1[k,r] * B1[k,:,r]
+    
+    return congruence_coefficient(np.vstack(sample_load0),np.vstack(sample_load1))[0]
+
+def collect_replicability_results(fp, dataset, method):
     if dataset == "COPSAC2010":
+        Metadata = pd.read_csv(fp+'/data/COPSAC2010_metadata.csv')
+        Metadata.set_index('Abcno',inplace=True)
         rep_ranges = [(i, i + 10) for i in range(0, 100, 10)]
     else:
         rep_ranges = [(i, i + 5) for i in range(0, 50, 5)]
+        Metadata = pd.read_csv(fp+'/data/FARMM_metadata.csv', index_col=[0])
+        Metadata = Metadata.groupby('SubjectID').agg({
+            'study_day': 'first',
+            'study_group': 'first'
+        })
 
     FMS_by_R = dict()
     dirs = [d for d in os.listdir(f'analysis_results/replicability/{dataset}/{method}/') if os.path.isdir(os.path.join(f'analysis_results/replicability/{dataset}/{method}/', d))]
@@ -752,8 +820,10 @@ def collect_replicability_results(dataset, method):
             cs = list(itertools.combinations(range(len(DFsplits)), 2))
             for i, pair in enumerate(cs):
                 if DFsplits['method'].iloc[0] == 'parafac2':
-                    FMS_result.append(congruence_coefficient(DFsplits['factors'].iloc[pair[0]][2],DFsplits['factors'].iloc[pair[1]][2])[0])
-
+                    # FMS_result.append(congruence_coefficient(DFsplits['factors'].iloc[pair[0]][2],DFsplits['factors'].iloc[pair[1]][2])[0])
+                    fmscb = get_par2scaledtime_fms(Metadata,DFsplits.loc[pair[0]],DFsplits.loc[pair[1]])
+                    fmsa = congruence_coefficient(DFsplits['factors'].iloc[pair[0]][2],DFsplits['factors'].iloc[pair[1]][2])[0]
+                    FMS_result.append([fmsa, fmscb])
                 else:
                     FMS_result.append(factor_match_score(DFsplits['factors'].iloc[pair[0]],DFsplits['factors'].iloc[pair[1]], consider_weights=False,absolute_value=True, skip_mode=0))
 
@@ -762,3 +832,184 @@ def collect_replicability_results(dataset, method):
             pickle.dump(FMS_by_R, f)
 
     return FMS_by_R
+    
+def collect_fmscb_models(fp, dataset, method, rank):
+    if dataset == "COPSAC2010":
+        Metadata = pd.read_csv(fp+'/data/COPSAC2010_metadata.csv')
+        Metadata.set_index('Abcno',inplace=True)
+        rep_ranges = [(i, i + 10) for i in range(0, 100, 10)]
+    else:
+        rep_ranges = [(i, i + 5) for i in range(0, 50, 5)]
+        Metadata = pd.read_csv(fp+'/data/FARMM_metadata.csv', index_col=[0])
+        Metadata = Metadata.groupby('SubjectID').agg({
+            'study_day': 'first',
+            'study_group': 'first'
+        })
+
+    FMS_by_R = dict()
+    dirs = [d for d in os.listdir(f'analysis_results/replicability/{dataset}/{method}/') if os.path.isdir(os.path.join(f'analysis_results/replicability/{dataset}/{method}/', d))]
+
+    FMS_result = []
+    failed_split = []
+    DFall = pd.DataFrame() # rep*split best runs
+    for rep_range in rep_ranges:
+        DFsplits = pd.DataFrame()
+        for rep in range(rep_range[0], rep_range[1]):
+            df = pd.DataFrame()
+            try:
+                for file_no in os.listdir(f"analysis_results/replicability/{dataset}/{method}/{rank}/split_{rep}/"):
+                    with open(f"analysis_results/replicability/{dataset}/{method}/{rank}/split_{rep}/{file_no}",'rb') as f:
+                        df_temp = pickle.load(f)
+                        df_temp = df_temp[df_temp['exit'] == "OK"]
+                        df_temp['iterations'] = df_temp['rec_errors'].apply(lambda x: len(x))
+                        if df_temp.shape[0] > 0:
+                            df = pd.concat([df_temp,df],ignore_index=True)
+            except Exception as e:
+                print(e)
+
+            # filter out run if there's NaN or allzero columns in factors:
+            for i in range(df.shape[0]):
+                if np.isnan(df['factors'][i][1][0]).any() | np.isnan(df['factors'][i][1][1]).any() | ~df['factors'][i][1][0].any(axis=0).all():
+                    df.drop(i,axis=0, inplace=True)
+                    
+            df['final_rec_error'] = df['rec_errors'].apply(lambda x: x[-1])
+            df['degenerate'] = df['factors'].apply(lambda x: check_degenerate(x, method))
+
+            # discard unfeasible runs
+            if method == "parafac2":
+                df['feasibility_gaps_last_min'] = df['feasibility_gaps'].apply(lambda x: max(x[-1]))
+                df['feasibility_gaps_last_min_larger_than_1e-6'] = df['feasibility_gaps_last_min'].apply(lambda x: x > 1e-6)
+                df = df[df['feasibility_gaps_last_min_larger_than_1e-6'] == False]
+                # discard runs that did not converge
+                df = df[df['iterations'] <= 5000]
+            else:
+                df = df[df['iterations'] <= 2000]
+
+            # discard degenerate runs
+            df = df[df['degenerate'] == False]
+
+            if len(df) < 2:
+                print("TOO FEW CONVERGED RUNS!")
+            else:
+
+                df.sort_values(by='final_rec_error',ascending=True, inplace=True)
+                df = df.iloc[[0]]
+                df['factors'] = df['factors'].apply(lambda x: scale_factors(x, method))
+                DFsplits = pd.concat([DFsplits, df.iloc[0].to_frame().T], ignore_index=True)
+                DFall = pd.concat([DFall, df.iloc[0].to_frame().T], ignore_index=True)
+
+        # compute pairwise FMS of splits
+        cs = list(itertools.combinations(range(len(DFsplits)), 2))
+        for i, pair in enumerate(cs):
+            if DFsplits['method'].iloc[0] == 'parafac2':
+                # FMS_result.append(congruence_coefficient(DFsplits['factors'].iloc[pair[0]][2],DFsplits['factors'].iloc[pair[1]][2])[0])
+                fmscb = get_par2scaledtime_fms(Metadata,DFsplits.loc[pair[0]],DFsplits.loc[pair[1]])
+                fmsa = congruence_coefficient(DFsplits['factors'].iloc[pair[0]][2],DFsplits['factors'].iloc[pair[1]][2])[0]
+                FMS_result.append([fmsa, fmscb])
+            else:
+                FMS_result.append(factor_match_score(DFsplits['factors'].iloc[pair[0]],DFsplits['factors'].iloc[pair[1]], consider_weights=False,absolute_value=True, skip_mode=0))
+
+    return DFall, FMS_result
+
+def get_scaledtime_factors(DF, Metadata, selected):
+    id0 = DF.dropped_ids
+    ix0 = ~np.isin(Metadata.index, id0)
+    keptID0 = Metadata.index[ix0].tolist()
+    submodel_pos = np.isin(np.asarray(keptID0), selected)
+
+    (C,B,A) = DF['factors']
+    C = C / la.norm(C, axis=0)
+    B = np.asarray(B)
+    # scale C and B into CB
+    CB = np.empty((B.shape[1],C.shape[1]),dtype='float64')
+    for r in range(C.shape[1]):
+        # for k in range(C.shape[0]):
+        CB[:,r] = C[submodel_pos,r] * B[submodel_pos,:,r]
+    
+    facsACB = ( 
+        (np.array([1.0] * C.shape[1])),
+        (A, CB) # A and CB
+    )
+    return facsACB
+
+def permute_to_ref(DF, reftaxfacs, ref_ix=0):
+    
+    DF = pd.DataFrame(DF, columns=["facs"])
+    out = []
+    for index, row in DF.iterrows():
+        _, h = congruence_coefficient(reftaxfacs, DF.loc[index,"facs"][1][0])
+        A = DF.loc[index,"facs"][1][0][:,h]
+        CB = DF.loc[index,"facs"][1][1][:,h]
+        # sign ambiguity:
+        for r in range(A.shape[1]):
+            corr = np.corrcoef(reftaxfacs[:,r], A[:,r])[0,1]
+            if corr < 0:
+                A[:,r] = A[:,r] * -1
+                CB[:,r] = CB[:,r] * -1
+
+        out.append(( 
+            (np.array([1.0] * A.shape[1])),
+            (A, CB)
+        ))
+    return out
+
+def create_selected_repli_df(DFall, selected_ids, Metadata, taxfacs, ref_ix=0):
+
+    long_form_results = []
+    
+    for subject_id in selected_ids:
+        mask = DFall['dropped_ids'].apply(lambda id_list: subject_id not in id_list)
+        df_filtered = DFall[mask]
+        
+        if df_filtered.empty:
+            print(f"Warning: No data found for subject {subject_id}. Skipping.")
+            continue
+
+        factors_series = df_filtered.apply(
+            get_scaledtime_factors, 
+            args=(Metadata, subject_id),
+            axis=1
+        )
+        
+        permuted_factors_list = permute_to_ref(factors_series, taxfacs, ref_ix=ref_ix)
+        
+        ref_row_full_index = df_filtered.index[ref_ix]
+        permuted_model_indices = df_filtered.index.drop(ref_row_full_index)
+
+        for submodel_id, permuted_data in zip(permuted_model_indices, permuted_factors_list):
+            
+            A = permuted_data[1][0]
+            CB = permuted_data[1][1]
+            
+            n_taxa, n_components = A.shape
+            for comp in range(n_components):
+                for taxon_idx in range(n_taxa):
+                    long_form_results.append({
+                        'selected_subject': subject_id,
+                        'submodel_id': submodel_id,
+                        'factor_type': 'A (Taxa)',
+                        'component': comp,
+                        'dim_1_idx': taxon_idx,  # Represents taxon index
+                        'dim_2_idx': np.nan,     # No second dimension
+                        'value': A[taxon_idx, comp]
+                    })
+            
+            n_time, n_components_cb = CB.shape
+
+            for comp in range(n_components_cb):
+                for time_idx in range(n_time):
+                    long_form_results.append({
+                        'selected_subject': subject_id,
+                        'submodel_id': submodel_id,
+                        'factor_type': 'CB (Time)',
+                        'component': comp,
+                        'Time': time_idx+1,  # Represents time index
+                        'dim_2_idx': np.nan,    # No covariate dimension
+                        'value': CB[time_idx, comp]
+                    })
+
+    if not long_form_results:
+        print("Warning: No results were generated.")
+        return pd.DataFrame()
+        
+    return pd.DataFrame(long_form_results)
