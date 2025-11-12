@@ -1,3 +1,4 @@
+name: pf2_micro
 channels:
   - defaults
   - conda-forge
