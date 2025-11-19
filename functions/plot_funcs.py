@@ -6,6 +6,7 @@ import pickle
 import numpy.linalg as la
 import scipy.io as sio
 from scipy import stats
+from sklearn.metrics.pairwise import cosine_similarity
 from statannotations.Annotator import Annotator
 import colorcet as cc
 import seaborn as sns
@@ -647,7 +648,7 @@ def scaledfactorplot_plain(Model, time_labels):
             time_load[:,i] = time_load[:,i] * -1
             subject_score[:,i] = subject_score[:,i] * -1
 
-    # sample loadings (subject_scores * time_load)
+    # scaled time loadings (subject_scores * time_load)
     if time_load.shape[0] == subject_score.shape[0]:
         sample_load = np.empty((subject_score.shape[0],time_load.shape[1],R),dtype='float64')
         for r in range(R):
@@ -1560,3 +1561,41 @@ def get_sup_rep_plots(fn, SD, df, selected_ids, rgb_values):
     plt.show()
 
     return
+    
+def calculate_subject_cosine_similarity(df):
+
+    sub_ids = []
+    results_list = []
+    groups = df.groupby(['selected_subject', 'component'],observed=True)
+    for (subject, component), group_data in groups:
+        
+        pivot_df = group_data.pivot(index='submodel_id', columns='Time', values='value')
+
+        sim_matrix = cosine_similarity(pivot_df)
+
+        sim_df = pd.DataFrame(
+            sim_matrix, 
+            index=pivot_df.index, 
+            columns=pivot_df.index
+        )
+
+        stacked_series = sim_df.stack()
+        df = stacked_series.unstack(level=0)
+        
+        subject_cos = np.mean(np.asarray(get_upper_triangle_list(df)))
+        sub_ids.append(subject)
+        results_list.append(subject_cos)
+
+    final_df = pd.DataFrame(np.vstack((np.asarray(sub_ids), np.asarray(results_list))).T, columns=['selected_subject', 'FMS_CxB'])
+
+    return final_df
+
+def get_upper_triangle_list(df):
+
+    k_val = 1
+
+    indices = np.triu_indices_from(df, k=k_val)
+
+    values = df.values[indices]
+    
+    return values.tolist()
