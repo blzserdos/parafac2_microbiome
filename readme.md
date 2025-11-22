@@ -3,7 +3,7 @@
 This repository contains data and code to reproduce the findings and figures presented in the manuscript.
 
 ### Data Availability
-Shotgun metagenomic sequence data from the FARMM dataset [Tanes et al., 2021](https://doi.org/10.1016/j.chom.2020.12.012) were deposited under BioProject with accession code PRJNA675301. Processed data were obtained from [Ma and Li, 2023](https://doi.org/10.1214/22-AOAS1661) and is located in the `/data` directory. Individual-level clinical data from the $\sf{COPSAC{2010}}$ cohort are not publicly available to protect participant privacy, in accordance with the Danish Data Protection Act and European Regulation 2016/679 of the European Parliament and of the Council (GDPR) that prohibit distribution even in pseudo-anonymized form. Data can be made available under a joint research collaboration by contacting COPSAC’s data protection officer (administration@dbac.dk). 
+Shotgun metagenomic sequence data from the FARMM dataset [Tanes et al., 2021](https://doi.org/10.1016/j.chom.2020.12.012) were deposited under BioProject with accession code PRJNA675301. Processed data were obtained from [Ma and Li, 2023](https://doi.org/10.1214/22-AOAS1661) and is located in the `/data` directory. Individual-level clinical data from the COPSAC<sub>2010</sub> cohort are not publicly available to protect participant privacy, in accordance with the Danish Data Protection Act and European Regulation 2016/679 of the European Parliament and of the Council (GDPR) that prohibit distribution even in pseudo-anonymized form. Data can be made available under a joint research collaboration by contacting COPSAC’s data protection officer (administration@dbac.dk). 
 
 ### Requirements
 
