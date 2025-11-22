@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/1077451759.svg)](https://doi.org/10.5281/zenodo.17674126)
+
 ## Code and data accompanying the manuscript: Extracting host-specific developmental signatures from longitudinal microbiome data
 ---------------
 This repository contains data and code to reproduce the findings and figures presented in the manuscript.
