@@ -10,7 +10,7 @@ fi
 
 # 1. Create environment from YAML file
 echo "Creating environment: $ENV_NAME"
-conda env create -f $YAML_FILE -f $YAML_FILE python=3.12.8
+conda env create -f $YAML_FILE
 
 # 2. Install additional pip package
 echo "Installing additional pip package..."

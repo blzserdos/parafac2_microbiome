@@ -1159,7 +1159,7 @@ def fnscaledtimeplot(ax, Model, Metadata, component, var, time_labels, individua
 
     # unique category labels
     color_labels = ["VD - no IAP", "VD - IAP", "CS"]
-    rgb_values = ['#d9d9d9','#66C2A5','#FC8D62']
+    rgb_values = ["#c9c8c8",'#66C2A5','#FC8D62']
     # rgb_values = ['#e7298a','#e6ab02','#666666']
     
     color_map = dict(zip(color_labels, rgb_values))
@@ -1280,7 +1280,7 @@ def subjectsplot(ax, Model, Metadata, component):
     counts = Metadata["testing"].value_counts().loc[order].to_list()
     
     s = sns.boxplot(data=Metadata, y=str(component+1), order=order, hue = x, hue_order=order, orient='v',
-                        x=x,fliersize=0, width=0.4, palette=['#d9d9d9','#66C2A5','#FC8D62'],ax=ax)
+                        x=x,fliersize=0, width=0.4, palette=['#c9c8c8','#66C2A5','#FC8D62'],ax=ax)
 
     sns.stripplot(Metadata, y=str(component+1), x=x, hue = x,hue_order=order, orient='v', size=2, palette=['#cccccc','#54bb9a','#fc7b49'],ax=ax)
     ax.spines[['right', 'top']].set_visible(False)
@@ -1311,6 +1311,8 @@ def subjectsplotfarmm(ax, Model, Metadata, component):
     Metadata[str(component+1)] = Model[0][:,component]
     Metadata["testing"] = Metadata["Study group"].astype(str)
     rgb_values = ['#e6ab02', '#e7298a', '#7570b3'] 
+    rgb_values_points = ["#d29b04", "#d42680", "#64609b"] 
+
     x = "testing"
     order=["Vegan", "Omnivore", "EEN"]
     counts = Metadata["testing"].value_counts().loc[order].to_list()
@@ -1318,7 +1320,7 @@ def subjectsplotfarmm(ax, Model, Metadata, component):
     s = sns.boxplot(data=Metadata, x=x, order=order, hue = x, hue_order=order,
                         y=str(component+1),fliersize=0, width=0.4, palette=rgb_values,ax=ax)
 
-    sns.stripplot(Metadata, x=x, y=str(component+1),hue = x,hue_order=order, size=2, palette=rgb_values,ax=ax)
+    sns.stripplot(Metadata, x=x, y=str(component+1),hue = x,hue_order=order, size=3,linewidth=0.5,edgecolor="#404040", palette=rgb_values_points,ax=ax)
     ax.spines[['right', 'top']].set_visible(False)
     ax.set_ylabel(r"$\boldsymbol{c}_component$".replace('component', str(component+1)), fontsize=11)
     pairs=[
