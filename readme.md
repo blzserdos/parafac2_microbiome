@@ -80,6 +80,21 @@ The first line fits the model, while the second collects all factors computed, d
 └── example_script.ipynb  # Example script with basic usage of PARAFAC2 model on microbiome data
 ```
 
+## Citation info
+
+```
+@article {ErdosExtracting2026,
+	author = {Erd{\H o}s, Bal{\'a}zs and Chatzis, Christos and Thorsen, Jonathan and Stokholm, Jakob and Smilde, Age K. and Rasmussen, Morten A. and Acar, Evrim},
+	title = {Extracting host-specific developmental signatures from longitudinal microbiome data},
+	elocation-id = {2025.11.22.689760},
+	year = {2026},
+	doi = {10.1101/2025.11.22.689760},
+	publisher = {Cold Spring Harbor Laboratory},
+	URL = {https://www.biorxiv.org/content/early/2026/01/28/2025.11.22.689760},
+	journal = {bioRxiv}
+}
+```
+
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
