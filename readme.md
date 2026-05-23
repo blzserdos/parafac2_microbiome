@@ -74,6 +74,7 @@ The first line fits the model, while the second collects all factors computed, d
 ├── environment.yml     # Conda environment specification
 ├── 1_fit_model.sh      # (Optional) Script to re-fit models
 ├── 2_reproduce_results.ipynb # Main notebook for analysis and plotting
+├── 3_reproduce_results_rev.ipynb # Additional analysis at revision and plotting
 ├── matcouply-0.1.6.tar.gz # MatCouply library including missing data handling
 ├── setup.sh            # Setup script for Linux/MacOS
 ├── setup.bat           # Setup script for Windows (experimental, eventual manual installation of dependencies may be needed)
